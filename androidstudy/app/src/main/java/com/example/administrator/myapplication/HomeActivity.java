@@ -20,8 +20,15 @@ import com.google.android.things.pio.UartDevice;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Map;
+
+//import com.leinardi.android.things.driver.ds3231.Ds3231;
+
+import java.util.Calendar;
+import java.util.Date;
 
 /**
  * Skeleton of an Android Things activity.
@@ -48,8 +55,11 @@ public class HomeActivity extends Activity {
     private static final String TAG = "HomeActivity";
     private static final String UART_DEVICE_NAME = "UART0";
     private static final String GPIO_NAME ="BCM5";
+    private static final String I2C_DEVICE_NAME ="I2C1";
+    private static final int I2C_ADDRESS = 0xd0 ;
     private Gpio mGpio;
     public UartDevice mDevice;
+    private Ds3231 mDeviceI;
 
     String checkTextEnd = null;
     int md5Result = 0;
@@ -91,7 +101,15 @@ public class HomeActivity extends Activity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            onSerialDataReceived(dataStr);
+
+                            try {
+                                onSerialDataReceived(dataStr);
+                            } catch (ParseException e) {
+                                e.printStackTrace();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
                         }
                     });
                 }
@@ -118,6 +136,8 @@ public class HomeActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
+        Date date;
+
         PeripheralManager manager = PeripheralManager.getInstance();
         List<String> deviceList = manager.getUartDeviceList();
         if (deviceList.isEmpty()) {
@@ -142,6 +162,13 @@ public class HomeActivity extends Activity {
             Log.w(TAG, "Unable to access GPIO", e);
         }
 
+        List<String> deviceList1 = manager.getI2cBusList();
+        if (deviceList1.isEmpty()) {
+            Log.i(TAG, "No I2C bus available on this device.");
+        } else {
+            Log.i(TAG, "List of available devices: " + deviceList1);
+        }
+
 
 
         usbManager = getSystemService(UsbManager.class);
@@ -157,9 +184,40 @@ public class HomeActivity extends Activity {
             e.printStackTrace();
         }
 
+        try {
+            mDeviceI = new Ds3231(I2C_DEVICE_NAME);
+            Log.d(TAG, "isTimekeepingDataValid = " + mDeviceI.isTimekeepingDataValid());
+            Log.d(TAG, "isOscillatorEnabled = " + mDeviceI.isOscillatorEnabled());
+
+            //Calendar calendar = Calendar.getInstance();
+            //calendar.set(2018, Calendar.MARCH, 23,20,06,00);
+
+            //date = calendar.getTime();
+
+            //Log.d(TAG, "DateTime = " + date.toString());
+            //mDeviceI.setTime(date);
+            Log.d(TAG, "getTime = " + mDeviceI.getTime().toString());
+            //mDeviceI.setTime(date.getTime());
+            Log.d(TAG, "getTime = " + mDeviceI.getTime().toString());
+
+            //mDeviceI.close();
+        } catch (IOException e) {
+            Log.e(TAG, "Error while opening screen", e);
+            throw new RuntimeException(e);
+        } //finally {
+           // mDeviceI = null;
+        //}
+
     }
     protected void onStart() {
         super.onStart();
+        //UsbManager usbManager = getSystemService(UsbManager.class);
+        //Map<String, UsbDevice> connectedDevices = usbManager.getDeviceList();
+        //if (connectedDevices.isEmpty()) {
+        //    Log.i(TAG, "No UART port available on this device.");
+        //} else {
+        //    Log.i(TAG, "USBList of available devices: " + connectedDevices);
+        //}
 
         Log.d(TAG, "success2");
         Log.d(TAG, "aaaaaaaaaaaaaa!!!!"+md5Result);
@@ -192,6 +250,15 @@ public class HomeActivity extends Activity {
                 Log.w(TAG, "Unable to close GPIO", e);
             }
         }
+
+        if (mDeviceI != null) {
+            try {
+                mDeviceI.close();
+                mDeviceI = null;
+            } catch (IOException e) {
+                Log.w(TAG, "Unable to close I2C", e);
+            }
+        }
         unregisterReceiver(usbDetachedReceiver);
         stopUsbConnection();
     }
@@ -205,21 +272,21 @@ public class HomeActivity extends Activity {
     }
 
     public void writeUartData(UartDevice uart,byte[] tmpBuf) throws IOException {
-        byte[] SoundBuf = new byte[tmpBuf.length+19];
-        byte[] SoundBuf2 = new byte[tmpBuf.length+20];
+        byte[] SoundBuf = new byte[tmpBuf.length+21];
+        byte[] SoundBuf2 = new byte[tmpBuf.length+22];
         byte xorcrc = 0;
         int i;
         SoundBuf[0]=(byte)0xFD;
         SoundBuf[1]=0x00;
-        SoundBuf[2]=(byte)(tmpBuf.length+17);
+        SoundBuf[2]=(byte)(tmpBuf.length+18);
         SoundBuf[3]=0x01;
-        SoundBuf[4]=0x03;
+        SoundBuf[4]=0x04;
         SoundBuf[5]=0x00;
         SoundBuf[6]='[';
         SoundBuf[7]=0x00;
-        SoundBuf[8]='t';
+        SoundBuf[8]='v';
         SoundBuf[9]=0x00;
-        SoundBuf[10]=0x35;
+        SoundBuf[10]=0x31;
         SoundBuf[11]=0x00;
         SoundBuf[12]=']';
         SoundBuf[13]=0x00;
@@ -227,18 +294,20 @@ public class HomeActivity extends Activity {
         SoundBuf[15]=0x00;
         SoundBuf[16]='r';
         SoundBuf[17]=0x00;
-        SoundBuf[18]=']';
+        SoundBuf[18]=0x32;
+        SoundBuf[19]=0x00;
+        SoundBuf[20]=']';
         for (i=0;i<tmpBuf.length;i++)
         {
-            SoundBuf[19+i]=tmpBuf[i];
+            SoundBuf[21+i]=tmpBuf[i];
         }
-        for (i=0;i<tmpBuf.length+19;i++)
+        for (i=0;i<tmpBuf.length+21;i++)
         {
             xorcrc=(byte)(xorcrc ^ SoundBuf[i]);
         }
         System.arraycopy(SoundBuf,0,SoundBuf2,0,SoundBuf.length);
         SoundBuf2[SoundBuf2.length-1] = xorcrc;
-        int count = uart.write(SoundBuf2, SoundBuf2.length);
+        int count = uart.write(SoundBuf, SoundBuf.length);
         Log.d(TAG, "Wrote " + count + " bytes to peripheral");
     }
 
@@ -291,7 +360,7 @@ public class HomeActivity extends Activity {
         }
     }
 
-    private void onSerialDataReceived(String data) {
+    private void onSerialDataReceived(String data) throws ParseException, IOException {
         // Add whatever you want here
         Log.i(TAG, "Serial data received: " + data);
         if(data.length()>13) {
@@ -299,6 +368,15 @@ public class HomeActivity extends Activity {
             MD5Util md5 = new MD5Util();
             md5Result = md5.md5Check(userInfo1.substring(0, userInfo1.length() - 9), userInfo1.substring(userInfo1.length() - 8, userInfo1.length()));
 
+            String userInfoSp[] = userInfo1.split(" ");
+            SimpleDateFormat format= new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String userTime = userInfoSp[3]+" "+userInfoSp[4];
+            Date qrTime=format.parse(userTime);
+            int cha = qrTime.compareTo(mDeviceI.getTime());
+            long days=(qrTime.getTime()-mDeviceI.getTime().getTime())/(1000*3600*24);
+            Log.i(TAG, "shijiancha: " + days);
+            Log.i(TAG, "nowTime: " + mDeviceI.getTime().toString());
+            Log.i(TAG, "qrTime: " + qrTime.toString());
 
             switch (md5Result) {
                 case 1:
@@ -312,7 +390,16 @@ public class HomeActivity extends Activity {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    mHandler.postDelayed(r, 2000);
+                    try {
+                        configureOutputHigh(mGpio);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    try {
+                        Thread.currentThread().sleep(2000);//阻断2秒
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                     checkTextEnd = null;
                     userInfo1 = null;
                     userInfo = null;
@@ -320,13 +407,13 @@ public class HomeActivity extends Activity {
                     userName = null;
                     //继电器闭合
                     try {
-                        configureOutputHigh(mGpio);
+                        configureOutputLow(mGpio);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
 
                 case 2:
-                    md5Result = 0;
+                        md5Result = 0;
 
 
             }
@@ -348,4 +435,6 @@ public class HomeActivity extends Activity {
             connection = null;
         }
     }
+
+
 }

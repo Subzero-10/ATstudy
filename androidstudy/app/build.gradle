@@ -25,5 +25,6 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
     compile 'com.github.felHR85:UsbSerial:3.3'
+    compile 'com.leinardi.android.things:driver-ds3231:0.1'
     compileOnly 'com.google.android.things:androidthings:+'
 }
