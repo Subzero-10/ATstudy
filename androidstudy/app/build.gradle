@@ -27,4 +27,5 @@ dependencies {
     compile 'com.github.felHR85:UsbSerial:3.3'
     compile 'com.leinardi.android.things:driver-ds3231:0.1'
     compileOnly 'com.google.android.things:androidthings:+'
+    implementation files('src/main/lib/CH34xUARTDriver.jar')
 }

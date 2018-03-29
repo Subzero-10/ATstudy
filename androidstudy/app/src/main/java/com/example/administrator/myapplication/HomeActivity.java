@@ -30,6 +30,8 @@ import java.util.Map;
 import java.util.Calendar;
 import java.util.Date;
 
+import cn.wch.ch34xuartdriver.CH34xUARTDriver;
+
 /**
  * Skeleton of an Android Things activity.
  * <p>
@@ -56,6 +58,7 @@ public class HomeActivity extends Activity {
     private static final String UART_DEVICE_NAME = "UART0";
     private static final String GPIO_NAME ="BCM5";
     private static final String I2C_DEVICE_NAME ="I2C1";
+    private static final String ACTION_USB_PERMISSION = "cn.wch.wchusbdriver.USB_PERMISSION";
     private static final int I2C_ADDRESS = 0xd0 ;
     private Gpio mGpio;
     public UartDevice mDevice;
@@ -171,7 +174,15 @@ public class HomeActivity extends Activity {
 
 
 
+
         usbManager = getSystemService(UsbManager.class);
+
+        Map<String, UsbDevice> connectedDevices = usbManager.getDeviceList();
+        if (connectedDevices.isEmpty()) {
+            Log.i(TAG, "No USB available on this device.");
+        } else {
+            Log.i(TAG, "List of available devices: " + connectedDevices);
+        }
 
         // Detach events are sent as a system-wide broadcast
         IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED);
@@ -218,7 +229,29 @@ public class HomeActivity extends Activity {
         //} else {
         //    Log.i(TAG, "USBList of available devices: " + connectedDevices);
         //}
-
+        /*CH34xUARTDriver ch340 = new CH34xUARTDriver(
+                (UsbManager) getSystemService(Context.USB_SERVICE), this,
+                ACTION_USB_PERMISSION);
+        int retval = ch340.ResumeUsbList();
+        if (retval == -1)// ResumeUsbList方法用于枚举CH34X设备以及打开相关设备
+        {
+            Log.d(TAG,"打开设备失败!");
+            ch340.CloseDevice();
+        } else if (retval == 0) {
+            if (!ch340.UartInit()) {//对串口设备进行初始化操作
+                Log.d(TAG, "打开设备失败!");
+                return;
+            }
+            Log.d(TAG,"打开设备OK!");
+        }
+        if (ch340.SetConfig(115200, 8, 1, 0,
+                0)) {
+            Toast.makeText(MainActivity.this, "串口设置成功!",
+                    Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(MainActivity.this, "串口设置失败!",
+                    Toast.LENGTH_SHORT).show();
+        }*/
         Log.d(TAG, "success2");
         Log.d(TAG, "aaaaaaaaaaaaaa!!!!"+md5Result);
         startUsbConnection();
@@ -374,6 +407,10 @@ public class HomeActivity extends Activity {
             Date qrTime=format.parse(userTime);
             int cha = qrTime.compareTo(mDeviceI.getTime());
             long days=(qrTime.getTime()-mDeviceI.getTime().getTime())/(1000*3600*24);
+
+            //if(days<-1)
+            //   md5Result = 2;
+
             Log.i(TAG, "shijiancha: " + days);
             Log.i(TAG, "nowTime: " + mDeviceI.getTime().toString());
             Log.i(TAG, "qrTime: " + qrTime.toString());
