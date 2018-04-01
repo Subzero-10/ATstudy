@@ -57,10 +57,12 @@ public class HomeActivity extends Activity {
     private static final String TAG = "HomeActivity";
     private static final String UART_DEVICE_NAME = "UART0";
     private static final String GPIO_NAME ="BCM5";
+    private static final String GPIO_NAME1 ="BCM6";
     private static final String I2C_DEVICE_NAME ="I2C1";
     private static final String ACTION_USB_PERMISSION = "cn.wch.wchusbdriver.USB_PERMISSION";
     private static final int I2C_ADDRESS = 0xd0 ;
     private Gpio mGpio;
+    private Gpio mGpio1;
     public UartDevice mDevice;
     private Ds3231 mDeviceI;
 
@@ -82,6 +84,7 @@ public class HomeActivity extends Activity {
     private String buffer = "";
     private byte[] databyte;
     private int datacount = 0;
+    private int gpiocheck = 0;
 
     Handler mHandler = new Handler();
     Runnable r = new Runnable() {
@@ -176,6 +179,12 @@ public class HomeActivity extends Activity {
             configureOutputLow(mGpio);
         } catch (IOException e) {
             Log.w(TAG, "Unable to access GPIO", e);
+        }
+        try {
+            mGpio1 = manager.openGpio(GPIO_NAME1);
+            configureOutputLow(mGpio1);
+        } catch (IOException e) {
+            Log.w(TAG, "Unable to access GPIO1", e);
         }
 
         List<String> deviceList1 = manager.getI2cBusList();
@@ -297,6 +306,14 @@ public class HomeActivity extends Activity {
                 Log.w(TAG, "Unable to close GPIO", e);
             }
         }
+        if (mGpio1 != null) {
+            try {
+                mGpio1.close();
+                mGpio1 = null;
+            } catch (IOException e) {
+                Log.w(TAG, "Unable to close GPIO1", e);
+            }
+        }
 
         if (mDeviceI != null) {
             try {
@@ -327,26 +344,29 @@ public class HomeActivity extends Activity {
         SoundBuf[1]=0x00;
         SoundBuf[2]=(byte)(tmpBuf.length+18);
         SoundBuf[3]=0x01;
-        SoundBuf[4]=0x04;
-        SoundBuf[5]=0x00;
-        SoundBuf[6]='[';
-        SoundBuf[7]=0x00;
-        SoundBuf[8]='v';
-        SoundBuf[9]=0x00;
-        SoundBuf[10]=0x31;
-        SoundBuf[11]=0x00;
-        SoundBuf[12]=']';
-        SoundBuf[13]=0x00;
-        SoundBuf[14]='[';
-        SoundBuf[15]=0x00;
-        SoundBuf[16]='r';
-        SoundBuf[17]=0x00;
-        SoundBuf[18]=0x32;
-        SoundBuf[19]=0x00;
-        SoundBuf[20]=']';
+        SoundBuf[4]=0x03;
+        SoundBuf[6]=0x00;
+        SoundBuf[5]='[';
+        SoundBuf[8]=0x00;
+        SoundBuf[7]='v';
+        SoundBuf[10]=0x00;
+        SoundBuf[9]=0x39;
+        SoundBuf[12]=0x00;
+        SoundBuf[11]=']';
+        SoundBuf[14]=0x00;
+        SoundBuf[13]='[';
+        SoundBuf[16]=0x00;
+        SoundBuf[15]='r';
+        SoundBuf[18]=0x00;
+        SoundBuf[17]=0x31;
+        SoundBuf[20]=0x00;
+        SoundBuf[19]=']';
         for (i=0;i<tmpBuf.length;i++)
         {
-            SoundBuf[21+i]=tmpBuf[i];
+            if (i%2 ==0)
+                SoundBuf[21+i+1]=tmpBuf[i];
+            else
+                SoundBuf[21+i+-1]=tmpBuf[i];
         }
         for (i=0;i<tmpBuf.length+21;i++)
         {
@@ -424,6 +444,7 @@ public class HomeActivity extends Activity {
 
     private void onSerialDataReceived(String data) throws ParseException, IOException {
         // Add whatever you want here
+
         Log.i(TAG, "Serial data received: " + data);
         if(data.length()>13) {
             userInfo1 = data.replace(",", " ");
@@ -456,11 +477,20 @@ public class HomeActivity extends Activity {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
+
                     try {
                         configureOutputHigh(mGpio);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
+
+                    try {
+                        configureOutputHigh(mGpio1);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+
                     try {
                         Thread.currentThread().sleep(2000);//阻断2秒
                     } catch (InterruptedException e) {
@@ -474,6 +504,11 @@ public class HomeActivity extends Activity {
                     //继电器闭合
                     try {
                         configureOutputLow(mGpio);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    try {
+                        configureOutputLow(mGpio1);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
