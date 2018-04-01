@@ -73,11 +73,15 @@ public class HomeActivity extends Activity {
 
     private static final int USB_VENDOR_ID = 6790;
     private static final int USB_PRODUCT_ID = 29987;
+    private static final int USB_VENDOR_ID2 = 1027;
+    private static final int USB_PRODUCT_ID2= 24577;
 
     private UsbManager usbManager;
     private UsbDeviceConnection connection;
     private UsbSerialDevice serialDevice;
     private String buffer = "";
+    private byte[] databyte;
+    private int datacount = 0;
 
     Handler mHandler = new Handler();
     Runnable r = new Runnable() {
@@ -95,10 +99,19 @@ public class HomeActivity extends Activity {
         @Override
         public void onReceivedData(byte[] data) {
             try {
-                String dataUtf8 = new String(data, "UTF-8");
-                buffer += dataUtf8;
+                if (datacount ==0) {
+                    databyte = data;
+                    datacount = 1;
+                }
+                else
+                    databyte = byteMerger(databyte,data);
+                String dataUtf8 = new String(databyte, "UTF-8");//修改
+
+                //Log.i(TAG, "data is "+ dataUtf8 +" "+data[0]+" "+data[1]+" "+data[2]+" "+data[3]);
+                buffer = dataUtf8;//修改
                 int index;
                 while ((index = buffer.indexOf('\n')) != -1) {
+                    datacount = 0;
                     final String dataStr = buffer.substring(0, index + 1).trim();
                     buffer = buffer.length() == index ? "" : buffer.substring(index + 1);
                     runOnUiThread(new Runnable() {
@@ -254,8 +267,9 @@ public class HomeActivity extends Activity {
         }*/
         Log.d(TAG, "success2");
         Log.d(TAG, "aaaaaaaaaaaaaa!!!!"+md5Result);
-        startUsbConnection();
 
+        startUsbConnection2();
+        startUsbConnection();
     }
 
     @Override
@@ -372,6 +386,21 @@ public class HomeActivity extends Activity {
         Log.w(TAG, "Could not start USB connection - No devices found");
     }
 
+    private void startUsbConnection2() {
+        Map<String, UsbDevice> connectedDevices = usbManager.getDeviceList();
+
+        if (!connectedDevices.isEmpty()) {
+            for (UsbDevice device : connectedDevices.values()) {
+                if (device.getVendorId() == USB_VENDOR_ID2 && device.getProductId() == USB_PRODUCT_ID2) {
+                    Log.i(TAG, "Device found: " + device.getDeviceName());
+                    startSerialConnection(device);
+                    return;
+                }
+            }
+        }
+        Log.w(TAG, "Could not start USB connection - No devices found");
+    }
+
     private void startSerialConnection(UsbDevice device) {
         Log.i(TAG, "Ready to open USB device connection");
         connection = usbManager.openDevice(device);
@@ -471,6 +500,13 @@ public class HomeActivity extends Activity {
             serialDevice = null;
             connection = null;
         }
+    }
+
+    public static byte[] byteMerger(byte[] byte_1, byte[] byte_2){
+        byte[] byte_3 = new byte[byte_1.length+byte_2.length];
+        System.arraycopy(byte_1, 0, byte_3, 0, byte_1.length);
+        System.arraycopy(byte_2, 0, byte_3, byte_1.length, byte_2.length);
+        return byte_3;
     }
 
 
