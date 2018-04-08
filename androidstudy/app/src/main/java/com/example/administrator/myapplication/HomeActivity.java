@@ -336,13 +336,13 @@ public class HomeActivity extends Activity {
     }
 
     public void writeUartData(UartDevice uart,byte[] tmpBuf) throws IOException {
-        byte[] SoundBuf = new byte[tmpBuf.length+21];
-        byte[] SoundBuf2 = new byte[tmpBuf.length+22];
+        byte[] SoundBuf = new byte[tmpBuf.length+23];
+        byte[] SoundBuf2 = new byte[tmpBuf.length+24];
         byte xorcrc = 0;
         int i;
         SoundBuf[0]=(byte)0xFD;
         SoundBuf[1]=0x00;
-        SoundBuf[2]=(byte)(tmpBuf.length+18);
+        SoundBuf[2]=(byte)(tmpBuf.length+20);
         SoundBuf[3]=0x01;
         SoundBuf[4]=0x03;
         SoundBuf[6]=0x00;
@@ -350,25 +350,27 @@ public class HomeActivity extends Activity {
         SoundBuf[8]=0x00;
         SoundBuf[7]='v';
         SoundBuf[10]=0x00;
-        SoundBuf[9]=0x39;
+        SoundBuf[9]=0x32;
         SoundBuf[12]=0x00;
-        SoundBuf[11]=']';
+        SoundBuf[11]=0x30;
         SoundBuf[14]=0x00;
-        SoundBuf[13]='[';
+        SoundBuf[13]=']';
         SoundBuf[16]=0x00;
-        SoundBuf[15]='r';
+        SoundBuf[15]='[';
         SoundBuf[18]=0x00;
-        SoundBuf[17]=0x31;
+        SoundBuf[17]='r';
         SoundBuf[20]=0x00;
-        SoundBuf[19]=']';
+        SoundBuf[19]=0x31;
+        SoundBuf[22]=0x00;
+        SoundBuf[21]=']';
         for (i=0;i<tmpBuf.length;i++)
         {
             if (i%2 ==0)
-                SoundBuf[21+i+1]=tmpBuf[i];
+                SoundBuf[23+i+1]=tmpBuf[i];
             else
-                SoundBuf[21+i+-1]=tmpBuf[i];
+                SoundBuf[23+i+-1]=tmpBuf[i];
         }
-        for (i=0;i<tmpBuf.length+21;i++)
+        for (i=0;i<tmpBuf.length+23;i++)
         {
             xorcrc=(byte)(xorcrc ^ SoundBuf[i]);
         }
