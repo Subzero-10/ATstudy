@@ -283,11 +283,11 @@ public class HomeActivity extends Activity {
 
     public void writeUartData(UartDevice uart,byte[] tmpBuf) throws IOException {
         //对语音合成模块发送数据，使用UNICODE编码大头存储
-        byte[] SoundBuf = new byte[tmpBuf.length+23];
+        byte[] SoundBuf = new byte[tmpBuf.length+21];
         int i;
         SoundBuf[0]=(byte)0xFD;
         SoundBuf[1]=0x00;
-        SoundBuf[2]=(byte)(tmpBuf.length+20);//数据长度
+        SoundBuf[2]=(byte)(tmpBuf.length+18);//数据长度
         SoundBuf[3]=0x01;
         SoundBuf[4]=0x03;//UNICODE编码
         SoundBuf[6]=0x00;
@@ -295,26 +295,26 @@ public class HomeActivity extends Activity {
         SoundBuf[8]=0x00;
         SoundBuf[7]='v';
         SoundBuf[10]=0x00;
-        SoundBuf[9]=0x31;//10级音量
+        SoundBuf[9]=0x38;//8级音量
+        //SoundBuf[12]=0x00;
+        //SoundBuf[11]=0x30;
         SoundBuf[12]=0x00;
-        SoundBuf[11]=0x30;
+        SoundBuf[11]=']';
         SoundBuf[14]=0x00;
-        SoundBuf[13]=']';
+        SoundBuf[13]='[';
         SoundBuf[16]=0x00;
-        SoundBuf[15]='[';
+        SoundBuf[15]='r';//下一个字强制姓氏发音
         SoundBuf[18]=0x00;
-        SoundBuf[17]='r';//下一个字强制姓氏发音
+        SoundBuf[17]=0x31;
         SoundBuf[20]=0x00;
-        SoundBuf[19]=0x31;
-        SoundBuf[22]=0x00;
-        SoundBuf[21]=']';
+        SoundBuf[19]=']';
         for (i=0;i<tmpBuf.length;i++)
         {
             //对发送数据调整为大头存储
             if (i%2 ==0)
-                SoundBuf[23+i+1]=tmpBuf[i];
+                SoundBuf[21+i+1]=tmpBuf[i];
             else
-                SoundBuf[23+i+-1]=tmpBuf[i];
+                SoundBuf[21+i+-1]=tmpBuf[i];
         }
         //串口发送数据
         int count = uart.write(SoundBuf, SoundBuf.length);
