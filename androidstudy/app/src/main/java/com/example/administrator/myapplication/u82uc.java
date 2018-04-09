@@ -4,8 +4,8 @@ package com.example.administrator.myapplication;
  * Created by Administrator on 2018/3/11.
  */
 
-public class u82uc {
-    public static byte[] utf8ToUnicode(String string) {
+class u82uc {
+    static byte[] utf8ToUnicode(String string) {
 
         byte[] ccc= new byte[string.length()*2+4];
         for (int i = 0; i < string.length(); i++) {
@@ -21,9 +21,9 @@ public class u82uc {
         return ccc;
     }
 
-    public static void putShort(byte b[], short s, int index) {
-        b[index + 0] = (byte) (s >> 8);
-        b[index + 1] = (byte) (s >> 0);
+    private static void putShort(byte b[], short s, int index) {
+        b[index] = (byte) (s >> 8);
+        b[index + 1] = (byte) (s);
     }
 
 

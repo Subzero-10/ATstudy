@@ -1,16 +1,12 @@
 package com.example.administrator.myapplication;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.util.Log;
-import android.os.Handler;
 
 import com.felhr.usbserial.UsbSerialDevice;
 import com.felhr.usbserial.UsbSerialInterface;
@@ -22,15 +18,11 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+//import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
-
-//import com.leinardi.android.things.driver.ds3231.Ds3231;
-
-import java.util.Calendar;
 import java.util.Date;
 
-import cn.wch.ch34xuartdriver.CH34xUARTDriver;
 
 /**
  * Skeleton of an Android Things activity.
@@ -59,8 +51,6 @@ public class HomeActivity extends Activity {
     private static final String GPIO_NAME ="BCM5";
     private static final String GPIO_NAME1 ="BCM6";
     private static final String I2C_DEVICE_NAME ="I2C1";
-    private static final String ACTION_USB_PERMISSION = "cn.wch.wchusbdriver.USB_PERMISSION";
-    private static final int I2C_ADDRESS = 0xd0 ;
     private Gpio mGpio;
     private Gpio mGpio1;
     public UartDevice mDevice;
@@ -74,33 +64,23 @@ public class HomeActivity extends Activity {
     String userInfo= null;
 
     private static final int USB_VENDOR_ID = 6790;
-    private static final int USB_PRODUCT_ID = 29987;
+    private static final int USB_PRODUCT_ID = 29987;//ch340 vid pid
     private static final int USB_VENDOR_ID2 = 1027;
-    private static final int USB_PRODUCT_ID2= 24577;
+    private static final int USB_PRODUCT_ID2= 24577;//ft232 vid pid
 
     private UsbManager usbManager;
     private UsbDeviceConnection connection;
     private UsbSerialDevice serialDevice;
-    private String buffer = "";
+    private String buffer;
     private byte[] databyte;
     private int datacount = 0;
-    private int gpiocheck = 0;
 
-    Handler mHandler = new Handler();
-    Runnable r = new Runnable() {
-
-        @Override
-        public void run() {
-            //do something
-            //每隔1s循环执行run方法
-            mHandler.postDelayed(this, 1000);
-        }
-    };
 
     private UsbSerialInterface.UsbReadCallback callback = new UsbSerialInterface.UsbReadCallback() {
-
+        // USB转串口回调程序
         @Override
         public void onReceivedData(byte[] data) {
+            // 如果是传进来的第一个byte数组，保留为databyte，否则与之前的databyte拼接为一个，解决FT232传送数据不连续的问题。
             try {
                 if (datacount ==0) {
                     databyte = data;
@@ -108,10 +88,12 @@ public class HomeActivity extends Activity {
                 }
                 else
                     databyte = byteMerger(databyte,data);
-                String dataUtf8 = new String(databyte, "UTF-8");//修改
+                // 将byte数组转换为UTF8编码的string
+                String dataUtf8;//修改
+                dataUtf8 = new String(databyte, "UTF-8");//修改
 
-                //Log.i(TAG, "data is "+ dataUtf8 +" "+data[0]+" "+data[1]+" "+data[2]+" "+data[3]);
                 buffer = dataUtf8;//修改
+                // 若以\n换行结尾，保留此次数据
                 int index;
                 while ((index = buffer.indexOf('\n')) != -1) {
                     datacount = 0;
@@ -122,10 +104,9 @@ public class HomeActivity extends Activity {
                         public void run() {
 
                             try {
+                                // 对接收的数据进行处理
                                 onSerialDataReceived(dataStr);
-                            } catch (ParseException e) {
-                                e.printStackTrace();
-                            } catch (IOException e) {
+                            } catch (ParseException | IOException e) {
                                 e.printStackTrace();
                             }
 
@@ -138,26 +119,15 @@ public class HomeActivity extends Activity {
         }
     };
 
-    private final BroadcastReceiver usbDetachedReceiver = new BroadcastReceiver() {
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
 
-            if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
-                UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
-                if (device != null && device.getVendorId() == USB_VENDOR_ID && device.getProductId() == USB_PRODUCT_ID) {
-                    Log.i(TAG, "USB device detached");
-                    stopUsbConnection();
-                }
-            }
-        }
-    };
 
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
-        Date date;
-
+        //Date date;
+        buffer = "";
         PeripheralManager manager = PeripheralManager.getInstance();
+        // 打印串口
         List<String> deviceList = manager.getUartDeviceList();
         if (deviceList.isEmpty()) {
             Log.i(TAG, "No UART port available on this device.");
@@ -165,6 +135,7 @@ public class HomeActivity extends Activity {
             Log.i(TAG, "List of available devices: " + deviceList);
         }
 
+        // 打开串口
         Log.d(TAG, "onCreate: 1");
         try {
             mDevice = manager.openUartDevice(UART_DEVICE_NAME);
@@ -174,6 +145,7 @@ public class HomeActivity extends Activity {
             Log.w(TAG, "Unable to access UART device", e);
         }
 
+        // 打开GPIO
         try {
             mGpio = manager.openGpio(GPIO_NAME);
             configureOutputLow(mGpio);
@@ -187,6 +159,7 @@ public class HomeActivity extends Activity {
             Log.w(TAG, "Unable to access GPIO1", e);
         }
 
+        // 打印I2C
         List<String> deviceList1 = manager.getI2cBusList();
         if (deviceList1.isEmpty()) {
             Log.i(TAG, "No I2C bus available on this device.");
@@ -194,22 +167,21 @@ public class HomeActivity extends Activity {
             Log.i(TAG, "List of available devices: " + deviceList1);
         }
 
-
-
-
         usbManager = getSystemService(UsbManager.class);
-
-        Map<String, UsbDevice> connectedDevices = usbManager.getDeviceList();
-        if (connectedDevices.isEmpty()) {
-            Log.i(TAG, "No USB available on this device.");
-        } else {
-            Log.i(TAG, "List of available devices: " + connectedDevices);
+        // 打印USB
+        Map<String, UsbDevice> connectedDevices = null;
+        if (usbManager != null) {
+            connectedDevices = usbManager.getDeviceList();
+        }
+        if (connectedDevices != null) {
+            if (connectedDevices.isEmpty()) {
+                Log.i(TAG, "No USB available on this device.");
+            } else {
+                Log.i(TAG, "List of available devices: " + connectedDevices);
+            }
         }
 
-        // Detach events are sent as a system-wide broadcast
-        IntentFilter filter = new IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED);
-        registerReceiver(usbDetachedReceiver, filter);
-
+        // 程序启动时播报“程序启动”
         byte[] textBuf0 ={0x7a,0x0b,0x5e,(byte)0x8f,0x54,0x2f,0x52,(byte)0xa8};
         try {
             writeUartData(mDevice,textBuf0);
@@ -217,18 +189,21 @@ public class HomeActivity extends Activity {
             e.printStackTrace();
         }
 
+        // 初始化DS3231时钟模块，第一次使用或没电时须打开注释重新设置时间
         try {
             mDeviceI = new Ds3231(I2C_DEVICE_NAME);
             Log.d(TAG, "isTimekeepingDataValid = " + mDeviceI.isTimekeepingDataValid());
             Log.d(TAG, "isOscillatorEnabled = " + mDeviceI.isOscillatorEnabled());
 
             //Calendar calendar = Calendar.getInstance();
-            //calendar.set(2018, Calendar.MARCH, 23,20,06,00);
+            //calendar.set(2018, Calendar.APRIL, 9,10,30,00);
 
             //date = calendar.getTime();
 
             //Log.d(TAG, "DateTime = " + date.toString());
             //mDeviceI.setTime(date);
+
+            //noinspection ConstantConditions
             Log.d(TAG, "getTime = " + mDeviceI.getTime().toString());
             //mDeviceI.setTime(date.getTime());
             Log.d(TAG, "getTime = " + mDeviceI.getTime().toString());
@@ -237,46 +212,15 @@ public class HomeActivity extends Activity {
         } catch (IOException e) {
             Log.e(TAG, "Error while opening screen", e);
             throw new RuntimeException(e);
-        } //finally {
-           // mDeviceI = null;
-        //}
+        }
 
     }
     protected void onStart() {
         super.onStart();
-        //UsbManager usbManager = getSystemService(UsbManager.class);
-        //Map<String, UsbDevice> connectedDevices = usbManager.getDeviceList();
-        //if (connectedDevices.isEmpty()) {
-        //    Log.i(TAG, "No UART port available on this device.");
-        //} else {
-        //    Log.i(TAG, "USBList of available devices: " + connectedDevices);
-        //}
-        /*CH34xUARTDriver ch340 = new CH34xUARTDriver(
-                (UsbManager) getSystemService(Context.USB_SERVICE), this,
-                ACTION_USB_PERMISSION);
-        int retval = ch340.ResumeUsbList();
-        if (retval == -1)// ResumeUsbList方法用于枚举CH34X设备以及打开相关设备
-        {
-            Log.d(TAG,"打开设备失败!");
-            ch340.CloseDevice();
-        } else if (retval == 0) {
-            if (!ch340.UartInit()) {//对串口设备进行初始化操作
-                Log.d(TAG, "打开设备失败!");
-                return;
-            }
-            Log.d(TAG,"打开设备OK!");
-        }
-        if (ch340.SetConfig(115200, 8, 1, 0,
-                0)) {
-            Toast.makeText(MainActivity.this, "串口设置成功!",
-                    Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(MainActivity.this, "串口设置失败!",
-                    Toast.LENGTH_SHORT).show();
-        }*/
         Log.d(TAG, "success2");
         Log.d(TAG, "aaaaaaaaaaaaaa!!!!"+md5Result);
 
+        // 打开两个USB转串口
         startUsbConnection2();
         startUsbConnection();
     }
@@ -289,7 +233,7 @@ public class HomeActivity extends Activity {
 
     protected void onDestroy() {
         super.onDestroy();
-
+        // 关闭GPIO I2C USB UART连接
         if (mDevice != null) {
             try {
                 mDevice.close();
@@ -323,12 +267,14 @@ public class HomeActivity extends Activity {
                 Log.w(TAG, "Unable to close I2C", e);
             }
         }
-        unregisterReceiver(usbDetachedReceiver);
+
         stopUsbConnection();
     }
 
+
+
     public void configureUartFrame(UartDevice uart) throws IOException {
-        // Configure the UART port
+        // 配置串口
         uart.setBaudrate(9600);
         uart.setDataSize(8);
         uart.setParity(UartDevice.PARITY_NONE);
@@ -336,21 +282,20 @@ public class HomeActivity extends Activity {
     }
 
     public void writeUartData(UartDevice uart,byte[] tmpBuf) throws IOException {
+        //对语音合成模块发送数据，使用UNICODE编码大头存储
         byte[] SoundBuf = new byte[tmpBuf.length+23];
-        byte[] SoundBuf2 = new byte[tmpBuf.length+24];
-        byte xorcrc = 0;
         int i;
         SoundBuf[0]=(byte)0xFD;
         SoundBuf[1]=0x00;
-        SoundBuf[2]=(byte)(tmpBuf.length+20);
+        SoundBuf[2]=(byte)(tmpBuf.length+20);//数据长度
         SoundBuf[3]=0x01;
-        SoundBuf[4]=0x03;
+        SoundBuf[4]=0x03;//UNICODE编码
         SoundBuf[6]=0x00;
         SoundBuf[5]='[';
         SoundBuf[8]=0x00;
         SoundBuf[7]='v';
         SoundBuf[10]=0x00;
-        SoundBuf[9]=0x32;
+        SoundBuf[9]=0x31;//10级音量
         SoundBuf[12]=0x00;
         SoundBuf[11]=0x30;
         SoundBuf[14]=0x00;
@@ -358,34 +303,32 @@ public class HomeActivity extends Activity {
         SoundBuf[16]=0x00;
         SoundBuf[15]='[';
         SoundBuf[18]=0x00;
-        SoundBuf[17]='r';
+        SoundBuf[17]='r';//下一个字强制姓氏发音
         SoundBuf[20]=0x00;
         SoundBuf[19]=0x31;
         SoundBuf[22]=0x00;
         SoundBuf[21]=']';
         for (i=0;i<tmpBuf.length;i++)
         {
+            //对发送数据调整为大头存储
             if (i%2 ==0)
                 SoundBuf[23+i+1]=tmpBuf[i];
             else
                 SoundBuf[23+i+-1]=tmpBuf[i];
         }
-        for (i=0;i<tmpBuf.length+23;i++)
-        {
-            xorcrc=(byte)(xorcrc ^ SoundBuf[i]);
-        }
-        System.arraycopy(SoundBuf,0,SoundBuf2,0,SoundBuf.length);
-        SoundBuf2[SoundBuf2.length-1] = xorcrc;
+        //串口发送数据
         int count = uart.write(SoundBuf, SoundBuf.length);
         Log.d(TAG, "Wrote " + count + " bytes to peripheral");
     }
 
     public void configureOutputHigh(Gpio gpio) throws IOException {
+        //GPIO口拉高
         gpio.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW);
         gpio.setActiveType(Gpio.ACTIVE_HIGH);
         gpio.setValue(true);
     }
     public void configureOutputLow(Gpio gpio) throws IOException {
+        //GPIO口拉低
         // Initialize the pin as a high output
         gpio.setDirection(Gpio.DIRECTION_OUT_INITIALLY_HIGH);
         // Low voltage is considered active
@@ -393,7 +336,9 @@ public class HomeActivity extends Activity {
         // Toggle the value to be LOW
         gpio.setValue(true);
     }
+
     private void startUsbConnection() {
+        //打开USB连接
         Map<String, UsbDevice> connectedDevices = usbManager.getDeviceList();
 
         if (!connectedDevices.isEmpty()) {
@@ -407,7 +352,6 @@ public class HomeActivity extends Activity {
         }
         Log.w(TAG, "Could not start USB connection - No devices found");
     }
-
     private void startUsbConnection2() {
         Map<String, UsbDevice> connectedDevices = usbManager.getDeviceList();
 
@@ -424,6 +368,7 @@ public class HomeActivity extends Activity {
     }
 
     private void startSerialConnection(UsbDevice device) {
+        //配置USB转串口，打开连接
         Log.i(TAG, "Ready to open USB device connection");
         connection = usbManager.openDevice(device);
         serialDevice = UsbSerialDevice.createUsbSerialDevice(device, connection);
@@ -445,41 +390,44 @@ public class HomeActivity extends Activity {
     }
 
     private void onSerialDataReceived(String data) throws ParseException, IOException {
+        //从USB转串口接收数据后进行处理
         // Add whatever you want here
-
         Log.i(TAG, "Serial data received: " + data);
         if(data.length()>13) {
+            //将二维码中逗号换成空格
             userInfo1 = data.replace(",", " ");
             MD5Util md5 = new MD5Util();
+            //md5校验
             md5Result = md5.md5Check(userInfo1.substring(0, userInfo1.length() - 9), userInfo1.substring(userInfo1.length() - 8, userInfo1.length()));
 
+            //将二维码信息以空格为分割分为数组
             String userInfoSp[] = userInfo1.split(" ");
-            SimpleDateFormat format= new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            String userTime = userInfoSp[3]+" "+userInfoSp[4];
-            Date qrTime=format.parse(userTime);
-            int cha = qrTime.compareTo(mDeviceI.getTime());
-            long days=(qrTime.getTime()-mDeviceI.getTime().getTime())/(1000*3600*24);
+            @SuppressLint("SimpleDateFormat") SimpleDateFormat format= new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            if (userInfoSp.length>6) {
+                String userTime = userInfoSp[3] + " " + userInfoSp[4];
+                Date qrTime = format.parse(userTime);
+                //将二维码中时间与现在时间比对得到时间差
+                @SuppressWarnings("ConstantConditions") long days = (qrTime.getTime() - mDeviceI.getTime().getTime()) / (1000 * 3600 * 24);
 
-            //if(days<-1)
-            //   md5Result = 2;
 
-            Log.i(TAG, "shijiancha: " + days);
-            Log.i(TAG, "nowTime: " + mDeviceI.getTime().toString());
-            Log.i(TAG, "qrTime: " + qrTime.toString());
+                Log.i(TAG, "shijiancha: " + days);
+                Log.i(TAG, "nowTime: " + mDeviceI.getTime().toString());
+                Log.i(TAG, "qrTime: " + qrTime.toString());
+            }
 
             switch (md5Result) {
                 case 1:
+                    /* 验证成功
+                       将UTF8编码文字转换为UNICODE编码，通过串口输出语音 */
                     userName = userInfo1.substring(userInfo1.indexOf(" ") + 1, userInfo1.indexOf(" ", userInfo1.indexOf(" ") + 1));
-                    u82uc uu = new u82uc();
-                    byte[] textBuf = uu.utf8ToUnicode(userName);
-                    //将UTF8编码文字转换为UNICODE编码，通过串口输出语音
+                    byte[] textBuf = u82uc.utf8ToUnicode(userName);
                     try {
                         writeUartData(mDevice, textBuf);
                         Log.d(TAG, "ojbk!!!!" + textBuf[0] + textBuf[1] + textBuf[2] + textBuf[3] + userName);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-
+                    //GPIO口拉高，使能继电器
                     try {
                         configureOutputHigh(mGpio);
                     } catch (IOException e) {
@@ -492,18 +440,20 @@ public class HomeActivity extends Activity {
                         e.printStackTrace();
                     }
 
-
+                    //继电器吸合2s
                     try {
-                        Thread.currentThread().sleep(2000);//阻断2秒
+                        Thread.currentThread();
+                        Thread.sleep(2000);//阻断2秒
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
+                    //重置各类数据
                     checkTextEnd = null;
                     userInfo1 = null;
                     userInfo = null;
                     userInfo2 = null;
                     userName = null;
-                    //继电器闭合
+
                     try {
                         configureOutputLow(mGpio);
                     } catch (IOException e) {
@@ -515,8 +465,10 @@ public class HomeActivity extends Activity {
                         e.printStackTrace();
                     }
 
+
                 case 2:
-                        md5Result = 0;
+                    //验证失败
+                    md5Result = 0;
 
 
             }
@@ -525,6 +477,7 @@ public class HomeActivity extends Activity {
     }
 
     private void stopUsbConnection() {
+        //关闭USB连接
         try {
             if (serialDevice != null) {
                 serialDevice.close();
@@ -540,6 +493,7 @@ public class HomeActivity extends Activity {
     }
 
     public static byte[] byteMerger(byte[] byte_1, byte[] byte_2){
+        //将两个byte数组拼接
         byte[] byte_3 = new byte[byte_1.length+byte_2.length];
         System.arraycopy(byte_1, 0, byte_3, 0, byte_1.length);
         System.arraycopy(byte_2, 0, byte_3, byte_1.length, byte_2.length);
