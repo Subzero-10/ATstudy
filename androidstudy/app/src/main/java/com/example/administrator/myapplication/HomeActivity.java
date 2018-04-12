@@ -18,7 +18,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-//import java.util.Calendar;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 import java.util.Date;
@@ -61,7 +61,7 @@ public class HomeActivity extends Activity {
     String userName = null;
     String userInfo2 = null;
     String userInfo1 = null;
-    String userInfo= null;
+    String userInfo= null;          
 
     private static final int USB_VENDOR_ID = 6790;
     private static final int USB_PRODUCT_ID = 29987;//ch340 vid pid
@@ -124,7 +124,7 @@ public class HomeActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
-        //Date date;
+
         buffer = "";
         PeripheralManager manager = PeripheralManager.getInstance();
         // 打印串口
@@ -190,13 +190,14 @@ public class HomeActivity extends Activity {
         }
 
         // 初始化DS3231时钟模块，第一次使用或没电时须打开注释重新设置时间
+        //Date date;
         try {
             mDeviceI = new Ds3231(I2C_DEVICE_NAME);
             Log.d(TAG, "isTimekeepingDataValid = " + mDeviceI.isTimekeepingDataValid());
             Log.d(TAG, "isOscillatorEnabled = " + mDeviceI.isOscillatorEnabled());
 
             //Calendar calendar = Calendar.getInstance();
-            //calendar.set(2018, Calendar.APRIL, 9,10,30,00);
+            //calendar.set(2018, Calendar.APRIL, 12,8,17,00);
 
             //date = calendar.getTime();
 
@@ -443,7 +444,7 @@ public class HomeActivity extends Activity {
                     //继电器吸合2s
                     try {
                         Thread.currentThread();
-                        Thread.sleep(2000);//阻断2秒
+                        Thread.sleep(3000);//阻断3秒
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
