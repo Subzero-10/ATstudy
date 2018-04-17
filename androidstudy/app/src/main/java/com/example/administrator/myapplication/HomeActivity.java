@@ -74,6 +74,7 @@ public class HomeActivity extends Activity {
     private String buffer;
     private byte[] databyte;
     private int datacount = 0;
+    private long days = 0;
 
 
     private UsbSerialInterface.UsbReadCallback callback = new UsbSerialInterface.UsbReadCallback() {
@@ -197,7 +198,7 @@ public class HomeActivity extends Activity {
             Log.d(TAG, "isOscillatorEnabled = " + mDeviceI.isOscillatorEnabled());
 
             //Calendar calendar = Calendar.getInstance();
-            //calendar.set(2018, Calendar.APRIL, 12,8,17,00);
+            //calendar.set(2018, Calendar.APRIL, 17,14,31,00);
 
             //date = calendar.getTime();
 
@@ -207,7 +208,7 @@ public class HomeActivity extends Activity {
             //noinspection ConstantConditions
             Log.d(TAG, "getTime = " + mDeviceI.getTime().toString());
             //mDeviceI.setTime(date.getTime());
-            Log.d(TAG, "getTime = " + mDeviceI.getTime().toString());
+            Log.d(TAG, "getTime = " + mDeviceI.getTime().getHours());
 
             //mDeviceI.close();
         } catch (IOException e) {
@@ -400,6 +401,12 @@ public class HomeActivity extends Activity {
             MD5Util md5 = new MD5Util();
             //md5校验
             md5Result = md5.md5Check(userInfo1.substring(0, userInfo1.length() - 9), userInfo1.substring(userInfo1.length() - 8, userInfo1.length()));
+            //性别判断
+            int gender ;
+            if(userInfo1.charAt(0) == '0')
+                gender = 0;
+            else
+                gender = 1;
 
             //将二维码信息以空格为分割分为数组
             String userInfoSp[] = userInfo1.split(" ");
@@ -408,7 +415,8 @@ public class HomeActivity extends Activity {
                 String userTime = userInfoSp[3] + " " + userInfoSp[4];
                 Date qrTime = format.parse(userTime);
                 //将二维码中时间与现在时间比对得到时间差
-                @SuppressWarnings("ConstantConditions") long days = (qrTime.getTime() - mDeviceI.getTime().getTime()) / (1000 * 3600 * 24);
+                //noinspection ConstantConditions
+                days = (qrTime.getTime() - mDeviceI.getTime().getTime()) / (1000 * 3600 * 24);
 
 
                 Log.i(TAG, "shijiancha: " + days);
@@ -416,12 +424,16 @@ public class HomeActivity extends Activity {
                 Log.i(TAG, "qrTime: " + qrTime.toString());
             }
 
+            if (days >=0)
+            {
+                //通过
+            }
             switch (md5Result) {
                 case 1:
                     /* 验证成功
                        将UTF8编码文字转换为UNICODE编码，通过串口输出语音 */
                     userName = userInfo1.substring(userInfo1.indexOf(" ") + 1, userInfo1.indexOf(" ", userInfo1.indexOf(" ") + 1));
-                    byte[] textBuf = u82uc.utf8ToUnicode(userName);
+                    byte[] textBuf = u82uc.utf8ToUnicode(userName, gender,mDeviceI.getTime().getHours());
                     try {
                         writeUartData(mDevice, textBuf);
                         Log.d(TAG, "ojbk!!!!" + textBuf[0] + textBuf[1] + textBuf[2] + textBuf[3] + userName);
