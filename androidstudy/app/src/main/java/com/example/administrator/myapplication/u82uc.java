@@ -24,6 +24,10 @@ class u82uc {
             cccc[4] = 0x58;
             cccc[5] = (byte)0xeb;
         }
+        else if (gender == 10)
+        {
+            return ccc;
+        }
         else
         {
             cccc[2] = 0x51;

@@ -2,9 +2,14 @@ package com.example.administrator.myapplication;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -67,6 +72,8 @@ public class HomeActivity extends Activity {
     private static final int USB_PRODUCT_ID = 29987;//ch340 vid pid
     private static final int USB_VENDOR_ID2 = 1027;
     private static final int USB_PRODUCT_ID2= 24577;//ft232 vid pid
+    private static final int USB_VENDOR_ID3 = 1659;
+    private static final int USB_PRODUCT_ID3= 8963;//pl2303 vid pid
 
     private UsbManager usbManager;
     private UsbDeviceConnection connection;
@@ -182,13 +189,7 @@ public class HomeActivity extends Activity {
             }
         }
 
-        // 程序启动时播报“程序启动”
-        byte[] textBuf0 ={0x7a,0x0b,0x5e,(byte)0x8f,0x54,0x2f,0x52,(byte)0xa8};
-        try {
-            writeUartData(mDevice,textBuf0);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
 
         // 初始化DS3231时钟模块，第一次使用或没电时须打开注释重新设置时间
         //Date date;
@@ -225,6 +226,49 @@ public class HomeActivity extends Activity {
         // 打开两个USB转串口
         startUsbConnection2();
         startUsbConnection();
+        startUsbConnection3();
+
+        // 程序启动时播报“程序启动”
+        try {
+            Thread.currentThread();
+            Thread.sleep(3000);//阻断3// 秒
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        byte[] textBuf0 ={0x7a,0x0b,0x5e,(byte)0x8f,0x54,0x2f,0x52,(byte)0xa8};
+        try {
+            writeUartData(mDevice,textBuf0);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            Thread.currentThread();
+            Thread.sleep(1500);//阻断1.5// 秒
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        String ip;
+        ConnectivityManager conMann = (ConnectivityManager)
+                this.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        NetworkInfo wifiNetworkInfo = conMann.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+
+        if(wifiNetworkInfo.isConnected())
+        {
+            WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+            int ipAddress = wifiInfo.getIpAddress();
+            ip = intToIp(ipAddress);
+            System.out.println("wifi_ip地址为------"+ip);
+
+            byte[] textBufip = u82uc.utf8ToUnicode(ip, 10,10);
+            try {
+                writeUartData(mDevice, textBufip );
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -368,6 +412,20 @@ public class HomeActivity extends Activity {
         }
         Log.w(TAG, "Could not start USB connection - No devices found");
     }
+    private void startUsbConnection3() {
+        Map<String, UsbDevice> connectedDevices = usbManager.getDeviceList();
+
+        if (!connectedDevices.isEmpty()) {
+            for (UsbDevice device : connectedDevices.values()) {
+                if (device.getVendorId() == USB_VENDOR_ID3 && device.getProductId() == USB_PRODUCT_ID3) {
+                    Log.i(TAG, "Device found: " + device.getDeviceName());
+                    startSerialConnection(device);
+                    return;
+                }
+            }
+        }
+        Log.w(TAG, "Could not start USB connection - No devices found");
+    }
 
     private void startSerialConnection(UsbDevice device) {
         //配置USB转串口，打开连接
@@ -376,7 +434,7 @@ public class HomeActivity extends Activity {
         serialDevice = UsbSerialDevice.createUsbSerialDevice(device, connection);
         if (serialDevice != null) {
             if (serialDevice.open()) {
-                serialDevice.setBaudRate(115200);
+                serialDevice.setBaudRate(9600);
                 serialDevice.setDataBits(UsbSerialInterface.DATA_BITS_8);
                 serialDevice.setStopBits(UsbSerialInterface.STOP_BITS_1);
                 serialDevice.setParity(UsbSerialInterface.PARITY_NONE);
@@ -423,8 +481,8 @@ public class HomeActivity extends Activity {
                 Log.i(TAG, "nowTime: " + mDeviceI.getTime().toString());
                 Log.i(TAG, "qrTime: " + qrTime.toString());
             }
-
-            if (days >=0)
+            Log.i(TAG, "小区名称: " + userInfoSp[5]);
+            if (days >=0 && userInfoSp[5].equals("目的小区"))
             {
                 //通过
             }
@@ -456,7 +514,7 @@ public class HomeActivity extends Activity {
                     //继电器吸合2s
                     try {
                         Thread.currentThread();
-                        Thread.sleep(3000);//阻断3秒
+                        Thread.sleep(2000);//阻断3秒
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -513,5 +571,12 @@ public class HomeActivity extends Activity {
         return byte_3;
     }
 
-
+    public static String intToIp(int ipInt) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(ipInt & 0xFF).append(".");
+        sb.append((ipInt >> 8) & 0xFF).append(".");
+        sb.append((ipInt >> 16) & 0xFF).append(".");
+        sb.append((ipInt >> 24) & 0xFF);
+        return sb.toString();
+    }
 }
