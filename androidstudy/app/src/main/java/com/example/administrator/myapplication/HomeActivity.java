@@ -77,7 +77,11 @@ public class HomeActivity extends Activity {
 
     private UsbManager usbManager;
     private UsbDeviceConnection connection;
+    private UsbDeviceConnection connection2;
+    private UsbDeviceConnection connection3;
     private UsbSerialDevice serialDevice;
+    private UsbSerialDevice serialDevice2;
+    private UsbSerialDevice serialDevice3;
     private String buffer;
     private byte[] databyte;
     private int datacount = 0;
@@ -269,6 +273,10 @@ public class HomeActivity extends Activity {
                 e.printStackTrace();
             }
         }
+
+        //读卡器发送指令
+        byte[] textBuf1 ={0x00};
+        serialDevice3.write(textBuf1);
     }
 
     @Override
@@ -405,7 +413,7 @@ public class HomeActivity extends Activity {
             for (UsbDevice device : connectedDevices.values()) {
                 if (device.getVendorId() == USB_VENDOR_ID2 && device.getProductId() == USB_PRODUCT_ID2) {
                     Log.i(TAG, "Device found: " + device.getDeviceName());
-                    startSerialConnection(device);
+                    startSerialConnection2(device);
                     return;
                 }
             }
@@ -419,7 +427,7 @@ public class HomeActivity extends Activity {
             for (UsbDevice device : connectedDevices.values()) {
                 if (device.getVendorId() == USB_VENDOR_ID3 && device.getProductId() == USB_PRODUCT_ID3) {
                     Log.i(TAG, "Device found: " + device.getDeviceName());
-                    startSerialConnection(device);
+                    startSerialConnection3(device);
                     return;
                 }
             }
@@ -440,6 +448,48 @@ public class HomeActivity extends Activity {
                 serialDevice.setParity(UsbSerialInterface.PARITY_NONE);
                 serialDevice.setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF);
                 serialDevice.read(callback);
+                Log.i(TAG, "Serial connection opened");
+            } else {
+                Log.w(TAG, "Cannot open serial connection");
+            }
+        } else {
+            Log.w(TAG, "Could not create Usb Serial Device");
+        }
+    }
+    private void startSerialConnection2(UsbDevice device) {
+        //配置USB转串口，打开连接
+        Log.i(TAG, "Ready to open USB device connection");
+        connection2 = usbManager.openDevice(device);
+        serialDevice2 = UsbSerialDevice.createUsbSerialDevice(device, connection2);
+        if (serialDevice2 != null) {
+            if (serialDevice2.open()) {
+                serialDevice2.setBaudRate(9600);
+                serialDevice2.setDataBits(UsbSerialInterface.DATA_BITS_8);
+                serialDevice2.setStopBits(UsbSerialInterface.STOP_BITS_1);
+                serialDevice2.setParity(UsbSerialInterface.PARITY_NONE);
+                serialDevice2.setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF);
+                serialDevice2.read(callback);
+                Log.i(TAG, "Serial connection opened");
+            } else {
+                Log.w(TAG, "Cannot open serial connection");
+            }
+        } else {
+            Log.w(TAG, "Could not create Usb Serial Device");
+        }
+    }
+    private void startSerialConnection3(UsbDevice device) {
+        //配置USB转串口，打开连接
+        Log.i(TAG, "Ready to open USB device connection");
+        connection3 = usbManager.openDevice(device);
+        serialDevice3 = UsbSerialDevice.createUsbSerialDevice(device, connection3);
+        if (serialDevice3 != null) {
+            if (serialDevice3.open()) {
+                serialDevice3.setBaudRate(9600);
+                serialDevice3.setDataBits(UsbSerialInterface.DATA_BITS_8);
+                serialDevice3.setStopBits(UsbSerialInterface.STOP_BITS_1);
+                serialDevice3.setParity(UsbSerialInterface.PARITY_NONE);
+                serialDevice3.setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF);
+                serialDevice3.read(callback);
                 Log.i(TAG, "Serial connection opened");
             } else {
                 Log.w(TAG, "Cannot open serial connection");
