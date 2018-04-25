@@ -27,6 +27,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 import java.util.Date;
+import java.util.Objects;
 
 
 /**
@@ -85,7 +86,6 @@ public class HomeActivity extends Activity {
     private String buffer;
     private byte[] databyte;
     private int datacount = 0;
-    private long days = 0;
 
 
     private UsbSerialInterface.UsbReadCallback callback = new UsbSerialInterface.UsbReadCallback() {
@@ -117,7 +117,7 @@ public class HomeActivity extends Activity {
 
                             try {
                                 // 对接收的数据进行处理
-                                onSerialDataReceived(dataStr);
+                                onSerialDataReceived(dataStr,databyte);
                             } catch (ParseException | IOException e) {
                                 e.printStackTrace();
                             }
@@ -252,15 +252,18 @@ public class HomeActivity extends Activity {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
         String ip;
         ConnectivityManager conMann = (ConnectivityManager)
                 this.getSystemService(Context.CONNECTIVITY_SERVICE);
 
+        assert conMann != null;
         NetworkInfo wifiNetworkInfo = conMann.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
 
         if(wifiNetworkInfo.isConnected())
         {
             WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+            assert wifiManager != null;
             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
             int ipAddress = wifiInfo.getIpAddress();
             ip = intToIp(ipAddress);
@@ -275,8 +278,10 @@ public class HomeActivity extends Activity {
         }
 
         //读卡器发送指令
-        byte[] textBuf1 ={0x00};
-        serialDevice3.write(textBuf1);
+        if(serialDevice3!= null) {
+            byte[] textBuf1 = {0x00};
+            serialDevice3.write(textBuf1);
+        }
     }
 
     @Override
@@ -499,10 +504,22 @@ public class HomeActivity extends Activity {
         }
     }
 
-    private void onSerialDataReceived(String data) throws ParseException, IOException {
+    private void onSerialDataReceived(String data,byte[] databy) throws ParseException, IOException {
         //从USB转串口接收数据后进行处理
         // Add whatever you want here
-        Log.i(TAG, "Serial data received: " + data);
+        int gender = 0;
+        String byte2String = bytesToHexString(databy);
+        Log.i(TAG, "Serial data received: " + data+"  "+byte2String);
+
+        if(Objects.equals(byte2String, "040C0220000400CED2DADEC90A"))
+            data = "34,石峥,参观,2017-07-12 16:45:19,绿城小区,c6f6e1b3";
+        else if(Objects.equals(byte2String, "040C022000040026C4AE15880A"))
+            data = "0,李先生,管理员,2018-04-17 14:13:06,科群大厦205室,2c9a06c7";
+        else
+            md5Result = 2;
+
+
+        Log.i(TAG, "Serial data received1: " + data+"  "+byte2String);
         if(data.length()>13) {
             //将二维码中逗号换成空格
             userInfo1 = data.replace(",", " ");
@@ -510,90 +527,98 @@ public class HomeActivity extends Activity {
             //md5校验
             md5Result = md5.md5Check(userInfo1.substring(0, userInfo1.length() - 9), userInfo1.substring(userInfo1.length() - 8, userInfo1.length()));
             //性别判断
-            int gender ;
-            if(userInfo1.charAt(0) == '0')
+
+            if (userInfo1.charAt(0) == '0')
                 gender = 0;
             else
                 gender = 1;
 
             //将二维码信息以空格为分割分为数组
             String userInfoSp[] = userInfo1.split(" ");
-            @SuppressLint("SimpleDateFormat") SimpleDateFormat format= new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            if (userInfoSp.length>6) {
+            @SuppressLint("SimpleDateFormat") SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            if (userInfoSp.length > 6) {
                 String userTime = userInfoSp[3] + " " + userInfoSp[4];
                 Date qrTime = format.parse(userTime);
                 //将二维码中时间与现在时间比对得到时间差
                 //noinspection ConstantConditions
-                days = (qrTime.getTime() - mDeviceI.getTime().getTime()) / (1000 * 3600 * 24);
+                long days = (qrTime.getTime() - mDeviceI.getTime().getTime()) / (1000 * 3600 * 24);
 
 
                 Log.i(TAG, "shijiancha: " + days);
                 Log.i(TAG, "nowTime: " + mDeviceI.getTime().toString());
                 Log.i(TAG, "qrTime: " + qrTime.toString());
-            }
-            Log.i(TAG, "小区名称: " + userInfoSp[5]);
-            if (days >=0 && userInfoSp[5].equals("目的小区"))
-            {
-                //通过
-            }
-            switch (md5Result) {
-                case 1:
-                    /* 验证成功
-                       将UTF8编码文字转换为UNICODE编码，通过串口输出语音 */
-                    userName = userInfo1.substring(userInfo1.indexOf(" ") + 1, userInfo1.indexOf(" ", userInfo1.indexOf(" ") + 1));
-                    byte[] textBuf = u82uc.utf8ToUnicode(userName, gender,mDeviceI.getTime().getHours());
-                    try {
-                        writeUartData(mDevice, textBuf);
-                        Log.d(TAG, "ojbk!!!!" + textBuf[0] + textBuf[1] + textBuf[2] + textBuf[3] + userName);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    //GPIO口拉高，使能继电器
-                    try {
-                        configureOutputHigh(mGpio);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
 
-                    try {
-                        configureOutputHigh(mGpio1);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                    //继电器吸合2s
-                    try {
-                        Thread.currentThread();
-                        Thread.sleep(2000);//阻断3秒
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    //重置各类数据
-                    checkTextEnd = null;
-                    userInfo1 = null;
-                    userInfo = null;
-                    userInfo2 = null;
-                    userName = null;
-
-                    try {
-                        configureOutputLow(mGpio);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    try {
-                        configureOutputLow(mGpio1);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-
-                case 2:
-                    //验证失败
-                    md5Result = 0;
-
-
+                Log.i(TAG, "小区名称: " + userInfoSp[5]);
+                if (days >= 0 && userInfoSp[5].equals("目的小区")) {
+                    //通过
+                }
             }
         }
+        switch (md5Result) {
+            case 1:
+                /* 验证成功
+                   将UTF8编码文字转换为UNICODE编码，通过串口输出语音 */
+                userName = userInfo1.substring(userInfo1.indexOf(" ") + 1, userInfo1.indexOf(" ", userInfo1.indexOf(" ") + 1));
+                byte[] textBuf = u82uc.utf8ToUnicode(userName, gender,mDeviceI.getTime().getHours());
+                try {
+                    writeUartData(mDevice, textBuf);
+                    Log.d(TAG, "ojbk!!!!" + textBuf[0] + textBuf[1] + textBuf[2] + textBuf[3] + userName);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                //GPIO口拉高，使能继电器
+                try {
+                    configureOutputHigh(mGpio);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                try {
+                    configureOutputHigh(mGpio1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                //继电器吸合2s
+                try {
+                    Thread.currentThread();
+                    Thread.sleep(2000);//阻断3秒
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                //重置各类数据
+                checkTextEnd = null;
+                userInfo1 = null;
+                userInfo = null;
+                userInfo2 = null;
+                userName = null;
+
+                try {
+                    configureOutputLow(mGpio);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                try {
+                    configureOutputLow(mGpio1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                md5Result = 0;
+                break;
+
+
+            case 2:
+                //验证失败
+                md5Result = 0;
+                byte[] textBuf3 ={(byte)0x90,0x1a,(byte)0x88,0x4c,0x78,0x01,0x67,0x2a,(byte)0x8b,(byte)0xc6,0x52,0x2b};
+                try {
+                    writeUartData(mDevice,textBuf3);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+        }
+
 
     }
 
@@ -607,9 +632,27 @@ public class HomeActivity extends Activity {
             if (connection != null) {
                 connection.close();
             }
+            if (serialDevice2 != null) {
+                serialDevice2.close();
+            }
+
+            if (connection2 != null) {
+                connection2.close();
+            }
+            if (serialDevice3 != null) {
+                serialDevice3.close();
+            }
+
+            if (connection3 != null) {
+                connection3.close();
+            }
         } finally {
             serialDevice = null;
             connection = null;
+            serialDevice2 = null;
+            connection2 = null;
+            serialDevice3 = null;
+            connection3 = null;
         }
     }
 
@@ -629,4 +672,17 @@ public class HomeActivity extends Activity {
         sb.append((ipInt >> 24) & 0xFF);
         return sb.toString();
     }
+
+    public static String bytesToHexString(byte[] bArray) {
+        StringBuilder sb = new StringBuilder(bArray.length);
+        String sTemp;
+        for (byte aBArray : bArray) {
+            sTemp = Integer.toHexString(0xFF & aBArray);
+            if (sTemp.length() < 2)
+                sb.append(0);
+            sb.append(sTemp.toUpperCase());
+        }
+        return sb.toString();
+    }
 }
+
