@@ -69,12 +69,12 @@ public class HomeActivity extends Activity {
     String userInfo1 = null;
     String userInfo= null;          
 
-    private static final int USB_VENDOR_ID = 6790;
-    private static final int USB_PRODUCT_ID = 29987;//ch340 vid pid
+    private static final int USB_VENDOR_ID = 1027;
+    private static final int USB_PRODUCT_ID = 24577;//ch340 vid pid6790 29987
     private static final int USB_VENDOR_ID2 = 1027;
-    private static final int USB_PRODUCT_ID2= 24577;//ft232 vid pid
-    private static final int USB_VENDOR_ID3 = 1659;
-    private static final int USB_PRODUCT_ID3= 8963;//pl2303 vid pid
+    private static final int USB_PRODUCT_ID2= 24596;//ft232 vid pid 1027 24577 24599
+    private static final int USB_VENDOR_ID3 = 1027;
+    private static final int USB_PRODUCT_ID3= 24597;//pl2303 vid pid 1659 8963
 
     private UsbManager usbManager;
     private UsbDeviceConnection connection;
@@ -92,6 +92,7 @@ public class HomeActivity extends Activity {
         // USB转串口回调程序
         @Override
         public void onReceivedData(byte[] data) {
+            Log.i(TAG, "进来了!!!! " );
             // 如果是传进来的第一个byte数组，保留为databyte，否则与之前的databyte拼接为一个，解决FT232传送数据不连续的问题。
             try {
                 if (datacount ==0) {
@@ -107,6 +108,7 @@ public class HomeActivity extends Activity {
                 buffer = dataUtf8;//修改
                 // 若以\n换行结尾，保留此次数据
                 int index;
+                Log.i(TAG, "call data is      : " + buffer);
                 while ((index = buffer.indexOf('\n')) != -1) {
                     datacount = 0;
                     final String dataStr = buffer.substring(0, index + 1).trim();
@@ -228,8 +230,8 @@ public class HomeActivity extends Activity {
         Log.d(TAG, "aaaaaaaaaaaaaa!!!!"+md5Result);
 
         // 打开两个USB转串口
-        startUsbConnection2();
         startUsbConnection();
+        startUsbConnection2();
         startUsbConnection3();
 
         // 程序启动时播报“程序启动”
@@ -423,7 +425,7 @@ public class HomeActivity extends Activity {
                 }
             }
         }
-        Log.w(TAG, "Could not start USB connection - No devices found");
+        Log.w(TAG, "Could not start USB connection2 - No devices found");
     }
     private void startUsbConnection3() {
         Map<String, UsbDevice> connectedDevices = usbManager.getDeviceList();
@@ -437,7 +439,7 @@ public class HomeActivity extends Activity {
                 }
             }
         }
-        Log.w(TAG, "Could not start USB connection - No devices found");
+        Log.w(TAG, "Could not start USB connection3 - No devices found");
     }
 
     private void startSerialConnection(UsbDevice device) {
