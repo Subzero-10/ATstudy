@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
@@ -513,46 +514,75 @@ public class HomeActivity extends Activity {
         String byte2String = bytesToHexString(databy);
         Log.i(TAG, "Serial data received: " + data+"  "+byte2String);
 
-        if(Objects.equals(byte2String, "040C0220000400CED2DADEC90A"))
-            data = "34,石峥,参观,2017-07-12 16:45:19,绿城小区,c6f6e1b3";
-        else if(Objects.equals(byte2String, "040C022000040026C4AE15880A"))
-            data = "0,李先生,管理员,2018-04-17 14:13:06,科群大厦205室,2c9a06c7";
-        else
-            md5Result = 2;
+        if (md5Result == 2)
+        {
+            if(registerIC(databy))
+            {
+                byte[] textBuf = {0x6c,(byte)0xe8,0x51,(byte)0x8c,0x62,0x10,0x52,(byte)0x9f};
+                try {
+                    writeUartData(mDevice, textBuf);
 
-
-        Log.i(TAG, "Serial data received1: " + data+"  "+byte2String);
-        if(data.length()>13) {
-            //将二维码中逗号换成空格
-            userInfo1 = data.replace(",", " ");
-            MD5Util md5 = new MD5Util();
-            //md5校验
-            md5Result = md5.md5Check(userInfo1.substring(0, userInfo1.length() - 9), userInfo1.substring(userInfo1.length() - 8, userInfo1.length()));
-            //性别判断
-
-            if (userInfo1.charAt(0) == '0')
-                gender = 0;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
             else
-                gender = 1;
+            {
+                byte[] textBuf = {0x6c,(byte)0xe8,0x51,(byte)0x8c,0x59,0x31,(byte)0x8d,0x25};
+                try {
+                    writeUartData(mDevice, textBuf);
 
-            //将二维码信息以空格为分割分为数组
-            String userInfoSp[] = userInfo1.split(" ");
-            @SuppressLint("SimpleDateFormat") SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            if (userInfoSp.length > 6) {
-                String userTime = userInfoSp[3] + " " + userInfoSp[4];
-                Date qrTime = format.parse(userTime);
-                //将二维码中时间与现在时间比对得到时间差
-                //noinspection ConstantConditions
-                long days = (qrTime.getTime() - mDeviceI.getTime().getTime()) / (1000 * 3600 * 24);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            md5Result = 0;
+
+        }
+        else {
+            if (Objects.equals(byte2String, "040C0220000400CED2DADEC90A"))
+                data = "34,石峥,参观,2017-07-12 16:45:19,绿城小区,c6f6e1b3";
+            else if (Objects.equals(byte2String, "040C022000040026C4AE15880A"))
+                data = "0,李先生,管理员,2018-04-17 14:13:06,科群大厦205室,2c9a06c7";
+            else
+                md5Result = 3;
 
 
-                Log.i(TAG, "shijiancha: " + days);
-                Log.i(TAG, "nowTime: " + mDeviceI.getTime().toString());
-                Log.i(TAG, "qrTime: " + qrTime.toString());
+            Log.i(TAG, "Serial data received1: " + data + "  " + byte2String);
+            if (data.length() > 13) {
+                //将二维码中逗号换成空格
+                userInfo1 = data.replace(",", " ");
+                MD5Util md5 = new MD5Util();
+                //md5校验
+                md5Result = md5.md5Check(userInfo1.substring(0, userInfo1.length() - 9), userInfo1.substring(userInfo1.length() - 8, userInfo1.length()));
+                //性别判断
 
-                Log.i(TAG, "小区名称: " + userInfoSp[5]);
-                if (days >= 0 && userInfoSp[5].equals("目的小区")) {
-                    //通过
+                if (userInfo1.charAt(0) == '0')
+                    gender = 0;
+                else
+                    gender = 1;
+
+                //将二维码信息以空格为分割分为数组
+                String userInfoSp[] = userInfo1.split(" ");
+                @SuppressLint("SimpleDateFormat") SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                if (userInfoSp.length > 6) {
+                    String userTime = userInfoSp[3] + " " + userInfoSp[4];
+                    Date qrTime = format.parse(userTime);
+                    //将二维码中时间与现在时间比对得到时间差
+                    //noinspection ConstantConditions
+                    long days = (qrTime.getTime() - mDeviceI.getTime().getTime()) / (1000 * 3600 * 24);
+
+
+                    Log.i(TAG, "shijiancha: " + days);
+                    Log.i(TAG, "nowTime: " + mDeviceI.getTime().toString());
+                    Log.i(TAG, "qrTime: " + qrTime.toString());
+
+                    Log.i(TAG, "小区名称: " + userInfoSp[5]);
+                    if (days >= 0 && userInfoSp[5].equals("注册")) {
+                        Log.i(TAG, "看这里！！！！！ ");
+                        md5Result = 2;
+                        //通过
+                    }
                 }
             }
         }
@@ -610,6 +640,22 @@ public class HomeActivity extends Activity {
 
 
             case 2:
+                byte[] textBuf1 = {(byte)0x8b,(byte)0xf7,0x6c,(byte)0xe8,0x51,(byte)0x8c,0x00,0x49,0x00,0x43,0x53,0x61};
+                try {
+                    writeUartData(mDevice, textBuf1);
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                checkTextEnd = null;
+                userInfo1 = null;
+                userInfo = null;
+                userInfo2 = null;
+                userName = null;
+                //md5Result = 0;
+                break;
+
+            case 3:
                 //验证失败
                 md5Result = 0;
                 byte[] textBuf3 ={(byte)0x90,0x1a,(byte)0x88,0x4c,0x78,0x01,0x67,0x2a,(byte)0x8b,(byte)0xc6,0x52,0x2b};
@@ -685,6 +731,24 @@ public class HomeActivity extends Activity {
             sb.append(sTemp.toUpperCase());
         }
         return sb.toString();
+    }
+
+    public static boolean registerIC(byte[] IC)
+    {
+        byte checksum;
+        byte i;
+        byte[] ICcheck = IC.clone() ;
+        boolean ICcheckResult;
+
+        checksum = 0;
+        for(i = 0;i < (IC[1] - 1); i++) {
+        checksum ^= IC[i]; //异或
+        }
+        IC[IC[1] - 1] = (byte)~checksum ; //按位取反
+
+        ICcheckResult = Arrays.equals(IC, ICcheck);
+
+        return ICcheckResult;
     }
 }
 
