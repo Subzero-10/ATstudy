@@ -38,12 +38,12 @@ class MD5Util {
     int md5Check(String plaintext, String md5CheckNum)
     {
         String  md5Num = encrypt(plaintext);
-        int checkNum = 2;
+        int checkNum = 9;
         if (md5Num != null) {
             if (md5CheckNum.equals(md5Num.substring(24,32)))
                 checkNum = 1;
             else
-                checkNum = 2;
+                checkNum = 9;
         }
         return checkNum;
     }

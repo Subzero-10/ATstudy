@@ -2,7 +2,10 @@ package com.example.administrator.myapplication;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
@@ -84,6 +87,7 @@ public class HomeActivity extends Activity {
     private UsbSerialDevice serialDevice;
     private UsbSerialDevice serialDevice2;
     private UsbSerialDevice serialDevice3;
+    public  static ICdbHelper icdb;
     private String buffer;
     private byte[] databyte;
     private int datacount = 0;
@@ -223,6 +227,8 @@ public class HomeActivity extends Activity {
             Log.e(TAG, "Error while opening screen", e);
             throw new RuntimeException(e);
         }
+
+        icdb= new ICdbHelper(this);
 
     }
     protected void onStart() {
@@ -514,10 +520,11 @@ public class HomeActivity extends Activity {
         String byte2String = bytesToHexString(databy);
         Log.i(TAG, "Serial data received: " + data+"  "+byte2String);
 
-        if (md5Result == 2)
+        if (md5Result == 4)
         {
-            if(registerIC(databy))
+            if(checkIC(databy))
             {
+                registerIC(databy);
                 byte[] textBuf = {0x6c,(byte)0xe8,0x51,(byte)0x8c,0x62,0x10,0x52,(byte)0x9f};
                 try {
                     writeUartData(mDevice, textBuf);
@@ -528,65 +535,92 @@ public class HomeActivity extends Activity {
             }
             else
             {
-                byte[] textBuf = {0x6c,(byte)0xe8,0x51,(byte)0x8c,0x59,0x31,(byte)0x8d,0x25};
-                try {
-                    writeUartData(mDevice, textBuf);
+                if(Objects.equals(data, "1,石峥,管理员,2050-04-26 15:46:01,注册,ef7b5e4e"))
+                {
 
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    byte[] textBuf = {(byte)0x90, 0x00, 0x51, (byte)0xfa,0x6c, (byte) 0xe8, 0x51, (byte) 0x8c };
+                    try {
+                        writeUartData(mDevice, textBuf);
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    md5Result = 0;
+                }
+                else {
+                    byte[] textBuf = {0x6c, (byte) 0xe8, 0x51, (byte) 0x8c, 0x59, 0x31, (byte) 0x8d, 0x25};
+                    try {
+                        writeUartData(mDevice, textBuf);
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
-            md5Result = 0;
+
 
         }
         else {
-            if (Objects.equals(byte2String, "040C0220000400CED2DADEC90A"))
+            if (Objects.equals(byte2String, "040C0220000400CED2DADEC90A")) {
                 data = "34,石峥,参观,2017-07-12 16:45:19,绿城小区,c6f6e1b3";
-            else if (Objects.equals(byte2String, "040C022000040026C4AE15880A"))
+                databy[0] = 0x1a;
+            }
+            else if (Objects.equals(byte2String, "040C022000040026C4AE15880A")) {
                 data = "0,李先生,管理员,2018-04-17 14:13:06,科群大厦205室,2c9a06c7";
-            else
-                md5Result = 3;
-
+                databy[0] = 0x1a;
+            }
 
             Log.i(TAG, "Serial data received1: " + data + "  " + byte2String);
-            if (data.length() > 13) {
-                //将二维码中逗号换成空格
-                userInfo1 = data.replace(",", " ");
-                MD5Util md5 = new MD5Util();
-                //md5校验
-                md5Result = md5.md5Check(userInfo1.substring(0, userInfo1.length() - 9), userInfo1.substring(userInfo1.length() - 8, userInfo1.length()));
-                //性别判断
 
-                if (userInfo1.charAt(0) == '0')
-                    gender = 0;
+            if (checkIC(databy)) {
+                if (searchIC(byte2String))
+                    md5Result = 3;
                 else
-                    gender = 1;
+                    md5Result = 9;
+            }
+            else
+                {
+                if (data.length() > 13) {
+                    //将二维码中逗号换成空格
+                    userInfo1 = data.replace(",", " ");
+                    MD5Util md5 = new MD5Util();
+                    //md5校验
+                    md5Result = md5.md5Check(userInfo1.substring(0, userInfo1.length() - 9), userInfo1.substring(userInfo1.length() - 8, userInfo1.length()));
+                    //性别判断
 
-                //将二维码信息以空格为分割分为数组
-                String userInfoSp[] = userInfo1.split(" ");
-                @SuppressLint("SimpleDateFormat") SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                if (userInfoSp.length > 6) {
-                    String userTime = userInfoSp[3] + " " + userInfoSp[4];
-                    Date qrTime = format.parse(userTime);
-                    //将二维码中时间与现在时间比对得到时间差
-                    //noinspection ConstantConditions
-                    long days = (qrTime.getTime() - mDeviceI.getTime().getTime()) / (1000 * 3600 * 24);
+                    if (userInfo1.charAt(0) == '0')
+                        gender = 0;
+                    else
+                        gender = 1;
+
+                    //将二维码信息以空格为分割分为数组
+                    String userInfoSp[] = userInfo1.split(" ");
+                    @SuppressLint("SimpleDateFormat") SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    if (userInfoSp.length > 6) {
+                        String userTime = userInfoSp[3] + " " + userInfoSp[4];
+                        Date qrTime = format.parse(userTime);
+                        //将二维码中时间与现在时间比对得到时间差
+                        //noinspection ConstantConditions
+                        long days = (qrTime.getTime() - mDeviceI.getTime().getTime()) / (1000 * 3600 * 24);
 
 
-                    Log.i(TAG, "shijiancha: " + days);
-                    Log.i(TAG, "nowTime: " + mDeviceI.getTime().toString());
-                    Log.i(TAG, "qrTime: " + qrTime.toString());
+                        Log.i(TAG, "shijiancha: " + days);
+                        Log.i(TAG, "nowTime: " + mDeviceI.getTime().toString());
+                        Log.i(TAG, "qrTime: " + qrTime.toString());
 
-                    Log.i(TAG, "小区名称: " + userInfoSp[5]);
-                    if (days >= 0 && userInfoSp[5].equals("注册")) {
-                        Log.i(TAG, "看这里！！！！！ ");
-                        md5Result = 2;
-                        //通过
+                        Log.i(TAG, "小区名称: " + userInfoSp[5]);
+                        if (days >= 0 && userInfoSp[5].equals("注册")) {
+                            Log.i(TAG, "看这里！！！！！ ");
+                            md5Result = 2;
+                            //通过
+                        }
                     }
                 }
             }
         }
         switch (md5Result) {
+            case 0:
+                break;
             case 1:
                 /* 验证成功
                    将UTF8编码文字转换为UNICODE编码，通过串口输出语音 */
@@ -652,15 +686,65 @@ public class HomeActivity extends Activity {
                 userInfo = null;
                 userInfo2 = null;
                 userName = null;
-                //md5Result = 0;
+                md5Result = 4;
                 break;
 
             case 3:
+                /* 验证成功
+                   将UTF8编码文字转换为UNICODE编码，通过串口输出语音 */
+                byte[] textBuf3 = u82uc.utf8ToUnicode("欢迎", 1,mDeviceI.getTime().getHours());
+                byte[] textBuf33 = {0x6b,0x22,(byte)0x8f,(byte)0xce,0x51,0x49,0x4e,0x34,textBuf3[6],textBuf3[7],textBuf3[8],textBuf3[9],textBuf3[10],textBuf3[11]};
+                try {
+                    writeUartData(mDevice, textBuf33);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                //GPIO口拉高，使能继电器
+                try {
+                    configureOutputHigh(mGpio);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                try {
+                    configureOutputHigh(mGpio1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                //继电器吸合2s
+                try {
+                    Thread.currentThread();
+                    Thread.sleep(2000);//阻断3秒
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                //重置各类数据
+                checkTextEnd = null;
+                userInfo1 = null;
+                userInfo = null;
+                userInfo2 = null;
+                userName = null;
+
+                try {
+                    configureOutputLow(mGpio);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                try {
+                    configureOutputLow(mGpio1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                md5Result = 0;
+                break;
+
+            case 9:
                 //验证失败
                 md5Result = 0;
-                byte[] textBuf3 ={(byte)0x90,0x1a,(byte)0x88,0x4c,0x78,0x01,0x67,0x2a,(byte)0x8b,(byte)0xc6,0x52,0x2b};
+                byte[] textBuf9 ={(byte)0x90,0x1a,(byte)0x88,0x4c,0x78,0x01,0x67,0x2a,(byte)0x8b,(byte)0xc6,0x52,0x2b};
                 try {
-                    writeUartData(mDevice,textBuf3);
+                    writeUartData(mDevice,textBuf9);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -733,7 +817,7 @@ public class HomeActivity extends Activity {
         return sb.toString();
     }
 
-    public static boolean registerIC(byte[] IC)
+    public static boolean checkIC(byte[] IC)
     {
         byte checksum;
         byte i;
@@ -741,14 +825,45 @@ public class HomeActivity extends Activity {
         boolean ICcheckResult;
 
         checksum = 0;
-        for(i = 0;i < (IC[1] - 1); i++) {
-        checksum ^= IC[i]; //异或
+        if (IC.length >= IC[1]) {
+            for (i = 0; i < (IC[1] - 1); i++) {
+                checksum ^= IC[i]; //异或
+            }
+            IC[IC[1] - 1] = (byte) ~checksum; //按位取反
+            ICcheckResult = Arrays.equals(IC, ICcheck);
+            return ICcheckResult;
         }
-        IC[IC[1] - 1] = (byte)~checksum ; //按位取反
-
-        ICcheckResult = Arrays.equals(IC, ICcheck);
-
-        return ICcheckResult;
+        else
+            return false;
     }
+
+    public static boolean registerIC(byte[] IC)
+    {
+
+        SQLiteDatabase db = icdb.getWritableDatabase();
+        String byte2String = bytesToHexString(IC);
+        ContentValues values= new ContentValues();
+        values.put("icid", byte2String);
+        db.insert("ic",null,values);
+
+        return true;
+    }
+
+    public static boolean searchIC(String IC)
+    {
+        boolean searchIdResult = false;
+        SQLiteDatabase db = icdb.getWritableDatabase();
+        Cursor cursor = db.query("ic",null,null,null,null,null,null);
+        if(cursor.moveToFirst()){
+            do{
+                String icid = cursor.getString(cursor.getColumnIndex("icid"));
+                if (IC.equals(icid))
+                    searchIdResult = true;
+            }while(cursor.moveToNext());
+        }
+        cursor.close();
+        return  searchIdResult;
+    }
+
 }
 
