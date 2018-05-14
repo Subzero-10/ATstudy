@@ -113,18 +113,21 @@ public class HomeActivity extends Activity {
                 buffer = dataUtf8;//修改
                 // 若以\n换行结尾，保留此次数据
                 int index;
-                Log.i(TAG, "call data is      : " + buffer);
+                Log.i(TAG, "call data is      : " + buffer+"call data is      : " +bytesToHexString(databyte));
                 while ((index = buffer.indexOf('\n')) != -1) {
                     datacount = 0;
                     final String dataStr = buffer.substring(0, index + 1).trim();
                     buffer = buffer.length() == index ? "" : buffer.substring(index + 1);
+                    final byte[] databytefinal = databyte.clone();
+                    Log.i(TAG, "final data is      : " +bytesToHexString(databytefinal));
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
 
                             try {
                                 // 对接收的数据进行处理
-                                onSerialDataReceived(dataStr,databyte);
+                                onSerialDataReceived(dataStr,databytefinal);
+                                databyte = null;
                             } catch (ParseException | IOException e) {
                                 e.printStackTrace();
                             }
@@ -518,13 +521,23 @@ public class HomeActivity extends Activity {
         // Add whatever you want here
         int gender = 0;
         String byte2String = bytesToHexString(databy);
-        Log.i(TAG, "Serial data received: " + data+"  "+byte2String);
+        //byte bbb [] = {databy[0],databy[1],databyte}
+        final byte[] databy1 = databy.clone();
+        Log.i(TAG, "Serial data received: " + data+"  "+bytesToHexString(databy));
 
         if (md5Result == 4)
         {
-            if(checkIC(databy))
+            if(checkIC(databy)!=0)
             {
-                registerIC(databy);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+
+                            registerIC(databy1);
+
+                    }
+                });
+
                 byte[] textBuf = {0x6c,(byte)0xe8,0x51,(byte)0x8c,0x62,0x10,0x52,(byte)0x9f};
                 try {
                     writeUartData(mDevice, textBuf);
@@ -561,22 +574,32 @@ public class HomeActivity extends Activity {
 
         }
         else {
-            if (Objects.equals(byte2String, "040C0220000400CED2DADEC90A")) {
+            if (Objects.equals(byte2String, "040C0220000400CED2DADEC90A")||Objects.equals(byte2String, "CED2DADE31300A")) {
                 data = "34,石峥,参观,2017-07-12 16:45:19,绿城小区,c6f6e1b3";
                 databy[0] = 0x1a;
+                databy[databy.length-2] = 0x1a;
             }
-            else if (Objects.equals(byte2String, "040C022000040026C4AE15880A")) {
+            else if (Objects.equals(byte2String, "040C022000040026C4AE15880A")||Objects.equals(byte2String, "26C4AE1531300A")) {
                 data = "0,李先生,管理员,2018-04-17 14:13:06,科群大厦205室,2c9a06c7";
                 databy[0] = 0x1a;
+                databy[databy.length-2] = 0x1a;
             }
 
             Log.i(TAG, "Serial data received1: " + data + "  " + byte2String);
 
-            if (checkIC(databy)) {
-                if (searchIC(byte2String))
-                    md5Result = 3;
-                else
-                    md5Result = 9;
+            if (checkIC(databy)!=0) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        if (searchIC(databy1))
+                            md5Result = 3;
+                        else
+                            md5Result = 9;
+
+                    }
+                });
+
             }
             else
                 {
@@ -817,51 +840,118 @@ public class HomeActivity extends Activity {
         return sb.toString();
     }
 
-    public static boolean checkIC(byte[] IC)
+    public static int checkIC(byte[] IC)
     {
         byte checksum;
         byte i;
         byte[] ICcheck = IC.clone() ;
-        boolean ICcheckResult;
 
         checksum = 0;
-        if (IC.length >= IC[1]) {
+        if (IC.length >= IC[1]&&IC[1] >=0) {
             for (i = 0; i < (IC[1] - 1); i++) {
                 checksum ^= IC[i]; //异或
             }
             IC[IC[1] - 1] = (byte) ~checksum; //按位取反
-            ICcheckResult = Arrays.equals(IC, ICcheck);
-            return ICcheckResult;
+            if(Arrays.equals(IC, ICcheck))
+                return 1;
         }
-        else
-            return false;
+        if(IC[0] == 0x31 && IC[IC.length - 2] == 0x31)
+            return 2;
+        return 0;
     }
 
     public static boolean registerIC(byte[] IC)
     {
 
-        SQLiteDatabase db = icdb.getWritableDatabase();
-        String byte2String = bytesToHexString(IC);
-        ContentValues values= new ContentValues();
-        values.put("icid", byte2String);
-        db.insert("ic",null,values);
+        byte checksum;
+        byte i;
+        byte[] ICcheck = IC.clone() ;
 
-        return true;
+
+        SQLiteDatabase db = icdb.getWritableDatabase();
+
+        checksum = 0;
+        if (IC.length >= IC[1]&&IC[1] >=0) {
+            for (i = 0; i < (IC[1] - 1); i++) {
+                checksum ^= IC[i]; //异或
+            }
+            IC[IC[1] - 1] = (byte) ~checksum; //按位取反
+            if(Arrays.equals(IC, ICcheck)) {
+                byte[] IcId1 = new byte[IC[1] - 8];
+                System.arraycopy(IC, 7, IcId1, 0, IC[1] - 8);
+                String byte2String = bytesToHexString(IcId1);
+                Log.i(TAG, "注册ID: " + byte2String);
+                ContentValues values= new ContentValues();
+                values.put("icid", byte2String);
+                db.insert("ic",null,values);
+                return true;
+            }
+        }
+        if(IC[0] == 0x31 && IC[IC.length - 2] == 0x31) {
+            byte[] IcId2 = new byte[IC.length - 3];
+            System.arraycopy(IC, 1, IcId2, 0, IC.length - 3);
+            String byte2String = bytesToHexString(IcId2);
+            Log.i(TAG, "注册ID: " + byte2String);
+            ContentValues values= new ContentValues();
+            values.put("icid", byte2String);
+            db.insert("ic",null,values);
+            return true;
+        }
+
+        return false;
+
+
     }
 
-    public static boolean searchIC(String IC)
+    public static boolean searchIC(byte[] IC)
     {
         boolean searchIdResult = false;
         SQLiteDatabase db = icdb.getWritableDatabase();
         Cursor cursor = db.query("ic",null,null,null,null,null,null);
-        if(cursor.moveToFirst()){
-            do{
-                String icid = cursor.getString(cursor.getColumnIndex("icid"));
-                if (IC.equals(icid))
-                    searchIdResult = true;
-            }while(cursor.moveToNext());
+
+        byte checksum;
+        byte i;
+        byte[] ICcheck = IC.clone() ;
+
+        checksum = 0;
+        if (IC.length >= IC[1]&&IC[1] >=0) {
+            for (i = 0; i < (IC[1] - 1); i++) {
+                checksum ^= IC[i]; //异或
+            }
+            IC[IC[1] - 1] = (byte) ~checksum; //按位取反
+            if(Arrays.equals(IC, ICcheck)) {
+                byte[] IcId1 = new byte[IC[1] - 8];
+                System.arraycopy(IC, 7, IcId1, 0, IC[1] - 8);
+                String byte2String = bytesToHexString(IcId1);
+                Log.i(TAG, "搜索ID.: " + byte2String);
+                if(cursor.moveToFirst()){
+                    do{
+                        String icid = cursor.getString(cursor.getColumnIndex("icid"));
+                        if (byte2String.equals(icid))
+                            searchIdResult = true;
+                    }while(cursor.moveToNext());
+                }
+                cursor.close();
+
+            }
         }
-        cursor.close();
+        if(IC[0] == 0x31 && IC[IC.length - 2] == 0x31) {
+            byte[] IcId2 = new byte[IC.length - 3];
+            System.arraycopy(IC, 1, IcId2, 0, IC.length - 3);
+            String byte2String = bytesToHexString(IcId2);
+            Log.i(TAG, "搜索ID: " + byte2String);
+            if(cursor.moveToFirst()){
+                do{
+                    String icid = cursor.getString(cursor.getColumnIndex("icid"));
+                    if (byte2String.equals(icid))
+                        searchIdResult = true;
+                }while(cursor.moveToNext());
+            }
+            cursor.close();
+
+        }
+
+
         return  searchIdResult;
     }
 
