@@ -574,12 +574,12 @@ public class HomeActivity extends Activity {
 
         }
         else {
-            if (Objects.equals(byte2String, "040C0220000400CED2DADEC90A")||Objects.equals(byte2String, "CED2DADE31300A")) {
+            if (Objects.equals(byte2String, "040C0220000400CED2DADEC90A")||Objects.equals(byte2String, "31CED2DADE310A")) {
                 data = "34,石峥,参观,2017-07-12 16:45:19,绿城小区,c6f6e1b3";
                 databy[0] = 0x1a;
                 databy[databy.length-2] = 0x1a;
             }
-            else if (Objects.equals(byte2String, "040C022000040026C4AE15880A")||Objects.equals(byte2String, "26C4AE1531300A")) {
+            else if (Objects.equals(byte2String, "040C022000040026C4AE15880A")||Objects.equals(byte2String, "3126C4AE15310A")) {
                 data = "0,李先生,管理员,2018-04-17 14:13:06,科群大厦205室,2c9a06c7";
                 databy[0] = 0x1a;
                 databy[databy.length-2] = 0x1a;
