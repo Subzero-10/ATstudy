@@ -22,6 +22,7 @@ import com.google.android.things.pio.Gpio;
 import com.google.android.things.pio.PeripheralManager;
 import com.google.android.things.pio.UartDevice;
 
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.text.ParseException;
@@ -32,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Date;
 import java.util.Objects;
+
+import com.example.administrator.myapplication.Ints;
 
 
 /**
@@ -92,6 +95,9 @@ public class HomeActivity extends Activity {
     private byte[] databyte;
     private int datacount = 0;
 
+    //private AwesomenessCounter mAwesomenessCounter;
+    //private final GattServer mGattServer = new GattServer();
+
 
     private UsbSerialInterface.UsbReadCallback callback = new UsbSerialInterface.UsbReadCallback() {
         // USB转串口回调程序
@@ -119,7 +125,7 @@ public class HomeActivity extends Activity {
                     final String dataStr = buffer.substring(0, index + 1).trim();
                     buffer = buffer.length() == index ? "" : buffer.substring(index + 1);
                     final byte[] databytefinal = databyte.clone();
-                    Log.i(TAG, "final data is      : " +bytesToHexString(databytefinal));
+                    Log.i(TAG, "final data is     : " +bytesToHexString(databytefinal));
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -140,6 +146,10 @@ public class HomeActivity extends Activity {
             }
         }
     };
+
+
+
+
 
 
 
@@ -213,7 +223,7 @@ public class HomeActivity extends Activity {
             Log.d(TAG, "isOscillatorEnabled = " + mDeviceI.isOscillatorEnabled());
 
             //Calendar calendar = Calendar.getInstance();
-            //calendar.set(2018, Calendar.APRIL, 17,14,31,00);
+            //calendar.set(2018, Calendar.MAY, 23,15,30,00);
 
             //date = calendar.getTime();
 
@@ -232,6 +242,23 @@ public class HomeActivity extends Activity {
         }
 
         icdb= new ICdbHelper(this);
+
+        //mAwesomenessCounter = new AwesomenessCounter(this);
+
+        /*mGattServer.onCreate(this, new GattServer.GattServerListener() {
+            @Override
+            public byte[] onCounterRead() {
+                return Ints.toByteArray(mAwesomenessCounter.getCounterValue());
+            }
+
+            @Override
+            public void onInteractorWritten() {
+                int count = mAwesomenessCounter.incrementCounterValue();
+                //mLuckyCat.movePaw();
+                //mLuckyCat.updateCounter(count);
+            }
+        });*/
+
 
     }
     protected void onStart() {
@@ -340,6 +367,9 @@ public class HomeActivity extends Activity {
         }
 
         stopUsbConnection();
+
+        //mGattServer.onDestroy();
+
     }
 
 
@@ -954,6 +984,8 @@ public class HomeActivity extends Activity {
 
         return  searchIdResult;
     }
+
+
 
 }
 
