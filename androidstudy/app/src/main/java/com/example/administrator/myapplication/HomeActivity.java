@@ -223,7 +223,7 @@ public class HomeActivity extends Activity {
             Log.d(TAG, "isOscillatorEnabled = " + mDeviceI.isOscillatorEnabled());
 
             //Calendar calendar = Calendar.getInstance();
-            //calendar.set(2018, Calendar.MAY, 23,15,30,00);
+            //calendar.set(2018, Calendar.JUNE, 12,10,56,00);
 
             //date = calendar.getTime();
 
@@ -663,12 +663,14 @@ public class HomeActivity extends Activity {
 
                         Log.i(TAG, "小区名称: " + userInfoSp[5]);
                         if (days >= 0 && userInfoSp[5].equals("注册")) {
-                            Log.i(TAG, "看这里！！！！！ ");
+                            Log.i(TAG, "  ");
                             md5Result = 2;
                             //通过
                         }
                     }
                 }
+                else
+                    md5Result = 9;
             }
         }
         switch (md5Result) {
@@ -681,7 +683,7 @@ public class HomeActivity extends Activity {
                 byte[] textBuf = u82uc.utf8ToUnicode(userName, gender,mDeviceI.getTime().getHours());
                 try {
                     writeUartData(mDevice, textBuf);
-                    Log.d(TAG, "ojbk!!!!" + textBuf[0] + textBuf[1] + textBuf[2] + textBuf[3] + userName);
+                    Log.d(TAG, "通行码验证通过 " + textBuf[0] + textBuf[1] + textBuf[2] + textBuf[3] + userName);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -730,7 +732,7 @@ public class HomeActivity extends Activity {
                 byte[] textBuf1 = {(byte)0x8b,(byte)0xf7,0x6c,(byte)0xe8,0x51,(byte)0x8c,0x00,0x49,0x00,0x43,0x53,0x61};
                 try {
                     writeUartData(mDevice, textBuf1);
-
+                    Log.d(TAG, "管理员二维码验证通过 " );
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -749,6 +751,7 @@ public class HomeActivity extends Activity {
                 byte[] textBuf33 = {0x6b,0x22,(byte)0x8f,(byte)0xce,0x51,0x49,0x4e,0x34,textBuf3[6],textBuf3[7],textBuf3[8],textBuf3[9],textBuf3[10],textBuf3[11]};
                 try {
                     writeUartData(mDevice, textBuf33);
+                    Log.d(TAG, "IC卡验证通过 " );
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -798,6 +801,7 @@ public class HomeActivity extends Activity {
                 byte[] textBuf9 ={(byte)0x90,0x1a,(byte)0x88,0x4c,0x78,0x01,0x67,0x2a,(byte)0x8b,(byte)0xc6,0x52,0x2b};
                 try {
                     writeUartData(mDevice,textBuf9);
+                    Log.d(TAG, "非法通行码 " );
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
